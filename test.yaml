@@ -1,6 +1,13 @@
 ---
-gradientMode: "hue"
+anchorLinks:
+  - threshold: &threshold_inflow
+    - {color: "semi-dark-green", level: 0}
+    - {color: "orange", level: 125}
+    - {color: "red", level: 175}
+
 cellIdPreamble: "cell-"
+gradientMode: "hue"
+
 cells: 
   ahoj:
     dataRef: "process_max_fds{job=\"flt-rest-01\"}"
