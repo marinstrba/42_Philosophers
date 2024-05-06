@@ -1,0 +1,218 @@
+---
+
+#------------------------------------------------------------------------------
+# YAML Anchors and Aliases simplify maintenance. This is an example of an anchor
+# for a link. The corresponding alias would look like:
+#   link: *grafana-home
+
+anchorLinks:
+  - link: &grafana-home
+      url: "https://grafana.com/"
+      params: "time"
+
+#------------------------------------------------------------------------------
+# Test Settings
+
+# Version 1.6.0 onwards: This section details test settings used in validating the functionality.
+# They provide a way to drive particular code pathways.
+test:
+  # This changes the test timeSeries to be sparse and is used as a way to demonstrate the
+  # difference between datapoint 'last' and 'lastNotNull'. Undefined defaults to false.
+  testDataSparse: false
+
+  # Version 1.11.0 onwards: By default the base offset on the curves is 1 so they travel from
+  # 0 to 2. By shifting it to 0 you can have a range of -1 to +1 to test negative data.
+  testDataBaseOffset: 0
+
+  # Version 1.11.0 onwards: When set you get an extended set of datapoints around zero to facilitate
+  # testing in this region.
+  testDataExtendedZero: false
+
+#------------------------------------------------------------------------------
+# Grafana Variable Scalars
+
+# These scalars allow the grafana variable selections to impact the threshold values
+# used in the panel. Each grafana variable has an array of rules where a rule applies
+# to a subset of cells as defined by the cellIdPatternScope.
+#
+# At initialization the rule set for each cell is determined. Then at render time the first
+# rule on a cell to match the variable value results in that scalar being applied. The scalars
+# are accumulative across variables, but only the first rule match for a given variable will
+# be applied.
+variableThresholdScalars:
+  system:
+    - {variableValuePattern: ".*client.*", thresholdScalar: 2, cellIdPatternScope: [".*box.*"]}
+  environment:
+    - {variableValuePattern: "dev", thresholdScalar: 0.2, cellIdPatternScope: ["inbox_depth"]}
+
+#------------------------------------------------------------------------------
+# Highlighting
+
+# Version 1.6.0 onwards: The Highlighter legend, when enabled in the panel options, uses this
+# configuration to display the legend and highlight/lowlight the readouts based off of selection.
+# Only legend tags that also exist on cell definitions will be selectable. As such you can add
+# legend entries that are purely descriptive to make the tags understandable by a wider audience.
+#
+# This configuration works in tandem with cell level configuration. On each cell a tag array can
+# be defined allowing a cell to be highlighted in multiple dimensions.
+
+tagConfig:
+  # The legend will be displayed when the Highlighter is enabled in the panel options. The array entries
+  # should be either 'tags' defined on cells or descriptive text or separators. If not defined a legend
+  # will be deduced from the cells tags arrays.
+  legend: ["Queue Technology:", "rabbitMQ", "kafka", "|", "Flow Attribs:", "inflow", "depth", "|"]
+
+  # This defines the legend color to apply to the tag when the tag is selected. If not defined
+  # it defaults to yellow.
+  color: "yellow"
+  
+  # This defines the rgb factor to apply to a readouts color when the readout is highlighted. Note the
+  # rgb ratios are always maintained so this will result in this factor being capped. If not defined
+  # it defaults to 5.0.
+  highlightRgbFactor: 5.0
+
+  # This defines the alpha factor to apply to a readout when other readouts are highlighted.
+  # i.e. selections get highlighted. non-selections get lowlighted. If not defined it defaults to 0.3.
+  lowlightAlphaFactor: 0.3
+
+  # Version 1.7.0 onwards: When set this flag uses a thinner footprint for the combined highlighter
+  # and timeSlider. Enable when vertical space is at a premium. Default when undefined is false.
+  condensed: false
+
+#------------------------------------------------------------------------------
+# Panel Config
+
+# Version 1.6.0 onwards: When undefined the background color is not driven. When defined the color for
+# the current theme is used. Colors can be entered in all the normal ways of name, hex, hsl, etc.
+background:
+  darkThemeColor: "yellow"
+  lightThemeColor: "green"
+
+# Version 1.6.0 onwards: This defines which datapoint will be chosen from the time-series.
+# If your datasource supports graphite functions 'keepLastValue' and 'transformNull', using those
+# functions in combination with 'last' gives the most precise control. If you don't have them available,
+# 'lastNotNull' allows you to approximate it. With 'last' the closest datapoint based off the timeSlider
+# position is chosen. With 'lastNotNull', that datapoint is then walked back in time until a non-null value
+# is found.
+#
+# This is the panel level default which when undefined defaults to 'last'. It can be overriden at the cell
+# level and the cell-attribute level.
+#
+# Valid values are undefined, "last", "lastNotNull"
+datapoint: "last"
+
+# This defines the default color gradientMode. It defines the default value on cell labelColor.gradientMode
+# and fillColor.gradientMode for when the field is undefined. Values are "hue" and "none" with
+# "none" being the default when undefined.
+gradientMode: "hue"
+
+# This defines the preamble that will be added to every svg ID listed under 'cells'.
+# It can be an empty string. DrawIO at the moment adds a non-configurable 'cell-' as
+# shown here.
+cellIdPreamble: "cell-"
+
+# During initialization all inner cells that are id-free are assigned a new ID based off the
+# parent ID. By default they will be given the id <original-id><cellIdExtender><increasing-number>
+# where cellIdExtender will default if unset to "@flowrpt". If for any reason that causes your SVG ID
+# clashes you can change the cellIdExtender value. But normally it's just left unset.
+cellIdExtender: "@flowrpt"
+
+# This is the default label decimalPoints setting that will be used if no override exists at the
+# cell level. 'null' represents grafana's 'auto' mode. It will default to 0 if left undefined.
+# This panel level override is added after version 1.4.0. In earlier versions the auto mode is not
+# achievable.
+cellLabelDecimalPoints: null
+
+# This defines the set of cells that are going to be driven
+cells: 
+  ahoj:
+    dataRef: "process_max_fds{job=\"flt-rest-01\"}"
+    datapoint: "last"
+    tags: ["depth", "rabbitMQ"]
+    label:
+      dataRef: "process_max_fds{job=\"flt-rest-01\""
+      datapoint: "last"
+      separator: "cr"
+      units: "messages"
+      unitsPostfix: "MyUnits"
+      decimalPoints: 0
+    labelColor:
+      dataRef: "process_max_fds{job=\"flt-rest-01\""
+      datapoint: "last"
+      gradientMode: "hue"
+      thresholds:
+        - {color: "green", level: 0}
+        - {color: "orange", level: 500}
+        - {color: "red", level: 1000}
+      thresholdsRef: "depth"
+
+    # The fill color field defines how the cell should be colored based on the
+    # time-series value. If no adjustment is wanted the field should be omitted.
+    fillColor:
+      # See labelColor
+      dataRef: "test-data-large-cos"
+
+      # See labelColor
+      datapoint: "last"
+
+      # See labelColor
+      gradientMode: "hue"
+
+      # See labelColor
+      thresholds:
+        - {color: "semi-dark-green", level: 0}
+        - {color: "orange", level: 400}
+        - {color: "red", level: 800}
+
+      # See labelColor
+      thresholdsRef: "depth"
+
+    # Version 1.11.0 onwards: draw.io has a selectable line property called 'Flow Animation'.
+    # When selected the line animates in a particular direction at a particular rate to
+    # visualize flow. This section provides control for these animations. Note that the SVG
+    # must be exported (not just saved as svg) from draw.io for these animations to work.
+    # The yaml assumes directionality based on data 'sign' but that can be overriden by
+    # marking it as unidirectional. The animation duration is defined with three bounds
+    # of off, lower and upper.
+    #
+    # Whenever animations are present in this yaml data, a control is visible in the bottom
+    # left corner. The panel options also allows the initial state to be selectable.
+    flowAnimation:
+      # Optional attribute level override for the associated time-series.
+      dataRef: "test-data-large-cos"
+
+      # Optional attribute level override. Requires corresponding attribute level dataRef override.
+      datapoint: "last"
+
+      # The optional absolute data value at or below which the animation will be stopped.
+      thresholdOffValue: 0
+
+      # These terms define the conversion from incoming data values to animation durations. The longer
+      # the duration, the slower the animation.
+      thresholdLwrValue: 100
+      thresholdLwrDurationSecs: 1
+      thresholdUprValue: 600
+      thresholdUprDurationSecs: 0.1
+
+      # Animation speeds (above) are calculated based off of the absolute data value. The direction
+      # of the animation is determined off the sign of the data, unless this flag is true.
+      unidirectional: true
+
+    # The link defines the url to open if the cell is left clicked.
+    link:
+      # URL to open. It can contain parameters and those parameters can contain grafana variables.
+      url: "https://drawio-app.com"
+
+      # This defines what portion of the dashboard params should be added to the URL. Appended parameters
+      # will correctly post-pend on any existing parameters in the above URL. The params values are:
+      # 'none': this is the default
+      # 'time': this is particularly useful where a relative time-band is being used as these relative terms
+      #         aren't available as grafana-variables.
+      # 'all': all params will be appended
+      params: "time"
+      
+    # This defines an ID to a link defined in the siteConfig. If you want to share a
+    # link just within the panelConfig you should instead use a yaml anchor/alias.
+    # The above 'link' field takes precedence. Only if undefined will linkRef be
+    # checked.
+    linkRef: "drawio"
